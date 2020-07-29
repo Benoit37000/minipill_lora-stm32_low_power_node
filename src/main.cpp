@@ -17,8 +17,6 @@
  */
 
 // 2020-07-12  LMIC_setClockError
-// ttn12
-
 
 
 /*******************************************************************************
@@ -57,6 +55,7 @@
 #include <SPI.h>
 
 #include "STM32LowPower.h"
+#include "STM32IntRef.h"
 
 void do_send(osjob_t* j);
 
@@ -178,7 +177,15 @@ static osjob_t sendjob;
          Serial.println(F("OP_TXRXPEND, not sending"));
      } else {
          // Prepare upstream data transmission at the next possible time.
-         LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
+         uint8_t dataLength = 2;
+         uint8_t data[dataLength];
+
+         int32_t vcc = IntRef.readVref();
+
+         data[0] = (vcc >> 8) & 0xff;
+         data[1] = (vcc & 0xff);
+
+         LMIC_setTxData2(1, data, sizeof(data), 0);
          Serial.println(F("Packet queued"));
      }
      // Next TX is scheduled after TX_COMPLETE event.
