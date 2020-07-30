@@ -55,7 +55,11 @@
 #include <SPI.h>
 
 #include "STM32LowPower.h"
+
 #include "STM32IntRef.h"
+
+#include "BME280.h"
+
 
 void do_send(osjob_t* j);
 
@@ -65,13 +69,16 @@ void do_send(osjob_t* j);
 HardwareSerial Serial2(USART2);   // or HardWareSerial Serial2 (PA3, PA2);
 int i;
 
+
+/* A BME280 object using SPI, chip select pin PA1 */
+BME280 bme(SPI,PA1);
+
 // include security credentials OTAA, check secconfig_example.h for more information
 #include "secconfig.h"
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8);}
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
 void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
 
-static uint8_t mydata[] = "Hello, world!";
 static osjob_t sendjob;
 
  // Schedule TX every this many seconds (might become longer due to duty
@@ -144,7 +151,11 @@ static osjob_t sendjob;
 
              // Low power next transmission
              Serial.println("going to sleep");
+
+             pinMode(PA6, INPUT_ANALOG);
+
              LowPower.deepSleep(60000);
+             delay(1000);
              Serial.println("queing next job");
              LowPower.begin(); // reset low power parameters, seems to work -> 0.6 uA
              do_send(&sendjob);
@@ -177,13 +188,42 @@ static osjob_t sendjob;
          Serial.println(F("OP_TXRXPEND, not sending"));
      } else {
          // Prepare upstream data transmission at the next possible time.
-         uint8_t dataLength = 2;
+         uint8_t dataLength = 8;
          uint8_t data[dataLength];
 
          int32_t vcc = IntRef.readVref();
 
          data[0] = (vcc >> 8) & 0xff;
          data[1] = (vcc & 0xff);
+
+
+
+         // reading data from BME sensor
+         bme.readSensor();
+
+         float tempFloat = bme.getTemperature_C();
+         float humFloat = bme.getHumidity_RH();
+         float pressFloat = bme.getPressure_Pa();
+
+         // from float to uint16_t
+         uint16_t tempInt = 100 * tempFloat;
+         uint16_t humInt = 100 * humFloat;
+         // pressure is already given in 100 x mBar = hPa
+         uint16_t pressInt = pressFloat/10;
+
+         // move into bytebuffer
+         data[2] = (tempInt >> 8) & 0xff;
+         data[3] = tempInt & 0xff;
+
+         data[4] = (humInt >> 8) & 0xff;
+         data[5] = humInt & 0xff;
+
+         data[6] = (pressInt >> 8) & 0xff;
+         data[7] = pressInt & 0xff;
+
+         bme.setForcedMode();
+
+         bme.goToSleep();
 
          LMIC_setTxData2(1, data, sizeof(data), 0);
          Serial.println(F("Packet queued"));
@@ -212,6 +252,13 @@ static osjob_t sendjob;
      // to incrise the size of the RX window.
      LMIC_setClockError(MAX_CLOCK_ERROR * 10 / 100);
 
+
+     // begin communication with BME280 and set to default sampling, iirc, and standby settings
+     if (bme.begin() < 0) {
+       Serial.println("Error communicating with BME280 sensor, check wiring and SPI");
+       while(1){}
+     }
+
      // Configure low power
      LowPower.begin();
 
@@ -221,8 +268,8 @@ static osjob_t sendjob;
 
  void loop()
  {
-    Serial.print("loop ");
-    Serial.println(i);
-    i++;
+    //Serial.print("loop ");
+    //Serial.println(i);
+    //i++;
     os_runloop_once();
  }

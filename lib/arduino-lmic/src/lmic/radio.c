@@ -818,7 +818,7 @@ void radio_irq_handler (u1_t dio) {
             ASSERT(0);
         }
     }
-    // go from stanby to sleep
+    // go from standby to sleep
     opmode(OPMODE_SLEEP);
     // run os job (use preset func ptr)
     os_setCallback(&LMIC.osjob, LMIC.osjob.func);
