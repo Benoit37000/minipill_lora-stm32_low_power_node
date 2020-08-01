@@ -201,7 +201,8 @@ void hal_enableIRQs () {
     }
 }
 
-void hal_sleep () {
+void hal_sleep ()
+{
     // Not implemented
 }
 

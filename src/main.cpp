@@ -152,12 +152,12 @@ static osjob_t sendjob;
              // Low power next transmission
              Serial.println("going to sleep");
 
+             LowPower.begin(); // reset low power parameters, seems to work -> 0.6 uA without BME280
+             delay(100);
              pinMode(PA6, INPUT_ANALOG);
-
              LowPower.deepSleep(60000);
-             delay(1000);
+  
              Serial.println("queing next job");
-             LowPower.begin(); // reset low power parameters, seems to work -> 0.6 uA
              do_send(&sendjob);
              break;
          case EV_LOST_TSYNC:
@@ -268,8 +268,9 @@ static osjob_t sendjob;
 
  void loop()
  {
-    //Serial.print("loop ");
-    //Serial.println(i);
-    //i++;
+    // check for sleeping
+    Serial.print("loop ");
+    Serial.println(i);
+    i++;
     os_runloop_once();
  }
