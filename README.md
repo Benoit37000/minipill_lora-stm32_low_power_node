@@ -1,11 +1,11 @@
 # MiniPill LoRa version 1.1
 
-Please look at [https://www.iot-lab.org/blog/370/]() for general information on this
+Please look at https://www.iot-lab.org/blog/370/ for general information on this
 project. In this this file I will share some software specific information.
 
 ## PlatformIO
 Remember that this code is used in combination with the PlatformIO toolset.
-This can be found at [https://platformIO.org](). I use the toolset in combination
+This can be found at https://platformIO.org. I use the toolset in combination
 with the Atom IDE on MacOS.
 
 ## Adding a custom board
