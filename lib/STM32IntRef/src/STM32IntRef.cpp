@@ -1,3 +1,12 @@
+/*
+  STM32IntRef.cpp
+  Code to use interal reference data
+  @author  Leo Korbee (c), Leo.Korbee@xs4all.nl
+
+  @version 2020-08-07
+  A first version created form code found on the internet
+  Must still be cleaned
+*/
 #include "STM32IntRef.h"
 
 STM32IntRef IntRef;

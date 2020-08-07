@@ -1,0 +1,45 @@
+{
+  "build": {
+    "core": "stm32",
+    "cpu": "cortex-m0plus",
+    "extra_flags": "-DSTM32L0xx -DSTM32L051xx",
+    "f_cpu": "32000000L",
+    "framework_extra_flags": {
+      "arduino": "-D__CORTEX_SC=0"
+    },
+    "mcu": "stm32l051c8t6",
+    "variant": "/Users/leo/.platformio/variants/MINIPILL_L051XX_LORA"
+  },
+  "debug": {
+    "jlink_device": "STM32L051C8",
+    "openocd_target": "stm32l0",
+    "svd_path": "STM32L051x.svd"
+  },
+  "frameworks": [
+    "arduino",
+    "cmsis",
+    "stm32cube"
+  ],
+  "platforms": [
+    "ststm32"
+  ],
+  "name": "MiniPill L051C8 LORA",
+  "upload": {
+    "disable_flushing": false,
+    "maximum_ram_size": 8192,
+    "maximum_size": 65536,
+    "protocol": "stlink",
+    "protocols": [
+      "jlink",
+      "stlink",
+      "blackmagic",
+      "dfu",
+      "serial"
+    ],
+    "require_upload_port": true,
+    "use_1200bps_touch": false,
+    "wait_for_upload_port": false
+  },
+  "url": "https://www.st.com/en/microcontrollers-microprocessors/stm32l051c8.html",
+  "vendor": "IoT-lab.org"
+}

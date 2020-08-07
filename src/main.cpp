@@ -1,76 +1,36 @@
+/*
+  main.cpp
+  Main code where the control takes place
+  @author  Leo Korbee (c), Leo.Korbee@xs4all.nl
+  @website iot-lab.org
+  @license Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+  Thanks to all the folks who contributed beforme me on this code or libraries.
+  Please share you thoughts and comments or you projects with me through e-mail
+  or comment on my website
 
- // Pin mapping
- /* MiniPill LoRa v1.1 mapping - LoRa module RFM95W
- PA4,  // SPI1_NSS   NSS - RFM95W
- PA5,  // SPI1_SCK.  SCK - RFM95W
- PA6,  // SPI1_MISO. MISO - RFM95W
- PA7,  // SPI1_MOSI. MOSI - RFM95W
+  Please remove all comments on Serial.print() commands to get debug
+  information on hardware serial port (9600 baud). Rember that this wil take
+  about 2uA in Sleep Mode
 
- PA10, // USART1_RX. DIO0 - RFM95W
- PB4,  //            DIO1 - RFM95W
- PB5,  //            DIO2 - RFM95W
+  Hardware information at the end of this file.
 
- PA9,  // USART1_TX. RST - RFM95W
-
- VCC - 3V3
- GND - GND
- */
-
-// 2020-07-12  LMIC_setClockError
-
-
-/*******************************************************************************
-* Copyright (c) 2015 Thomas Telkamp and Matthijs Kooijman
-*
-* Permission is hereby granted, free of charge, to anyone
-* obtaining a copy of this document and accompanying files,
-* to do whatever they want with them without any restriction,
-* including, but not limited to, copying, modification and redistribution.
-* NO WARRANTY OF ANY KIND IS PROVIDED.
-*
-* This example sends a valid LoRaWAN packet with payload "Hello,
-* world!", using frequency and encryption settings matching those of
-* the The Things Network.
-*
-* This uses OTAA (Over-the-air activation), where where a DevEUI and
-* application key is configured, which are used in an over-the-air
-* activation procedure where a DevAddr and session keys are
-* assigned/generated for use with all further communication.
-*
-* Note: LoRaWAN per sub-band duty-cycle limitation is enforced (1% in
-* g1, 0.1% in g2), but not the TTN fair usage policy (which is probably
-* violated by this sketch when left running for longer)!
-
-* To use this sketch, first register your application and device with
-* the things network, to set or generate an AppEUI, DevEUI and AppKey.
-* Multiple devices can use the same AppEUI, but each device has its own
-* DevEUI and AppKey.
-*
-* Do not forget to define the radio type correctly in config.h.
-*
-*******************************************************************************/
+  @version 2020-07-12
+  Added LMIC_setClockError due to inaccurate timing on LMIC
+*/
 
 #include <lmic.h>
 #include <hal/hal.h>
 #include <SPI.h>
-
 #include "STM32LowPower.h"
-
 #include "STM32IntRef.h"
-
 #include "BME280.h"
 
-
 void do_send(osjob_t* j);
-void disableUnusedGPIO(void);
-
 
 // for debugging redirect to hardware Serial2
 // Tx on PA2
 //#define Serial Serial2
 //HardwareSerial Serial2(USART2);   // or HardWareSerial Serial2 (PA3, PA2);
-int i;
-
 
 /* A BME280 object using SPI, chip select pin PA1 */
 BME280 bme(SPI,PA1);
@@ -83,20 +43,22 @@ void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
 
 static osjob_t sendjob;
 
- // Schedule TX every this many seconds (might become longer due to duty
- // cycle limitations).
- const unsigned TX_INTERVAL = 60;
+// Sleep this many microseconds. Notice that the sending and waiting for downlink
+// will extend the time between send packets. You have to extract this time
+#define SLEEP_INTERVAL 300000
 
- // Pin mapping for the MiniPill LoRa
- const lmic_pinmap lmic_pins =
- {
-     .nss = PA4,
-     .rxtx = LMIC_UNUSED_PIN,
-     .rst = PA9,
-     .dio = {PA10, PB4, PB5},
- };
+// Pin mapping for the MiniPill LoRa with the RFM95 LoRa chip
+const lmic_pinmap lmic_pins =
+{
+  .nss = PA4,
+  .rxtx = LMIC_UNUSED_PIN,
+  .rst = PA9,
+  .dio = {PA10, PB4, PB5},
+};
 
- void onEvent (ev_t ev) {
+// event called by os on events
+void onEvent (ev_t ev)
+{
   //   Serial.print(os_getTime());
   //   Serial.print(": ");
      switch(ev) {
@@ -148,19 +110,16 @@ static osjob_t sendjob;
                }
     //           Serial.println();
              }
-             // Schedule next transmission
-             //os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(2), do_send);
-
-             // Low power next transmission
     //         Serial.println("going to sleep");
-
-             LowPower.begin(); // reset low power parameters, seems to work -> 0.6 uA without BME280
+             // reset low power parameters, seems to work -> 0.6 uA without BME280
+             LowPower.begin();
              delay(100);
+             // set PA6 to analog to reduce power due to currect flow on DIO on BME280
              pinMode(PA6, INPUT_ANALOG);
-             // 5 minutes sleep
-             LowPower.deepSleep(300000);
-
+             // take SLEEP_INTERVAL time to sleep
+             LowPower.deepSleep(SLEEP_INTERVAL);
     //         Serial.println("queing next job");
+            // next transmission
              do_send(&sendjob);
              break;
          case EV_LOST_TSYNC:
@@ -183,97 +142,102 @@ static osjob_t sendjob;
     //         Serial.println(F("Unknown event"));
              break;
      }
- }
+}
 
- void do_send(osjob_t* j){
-     // Check if there is not a current TX/RX job running
-     if (LMIC.opmode & OP_TXRXPEND) {
+//
+void do_send(osjob_t* j)
+{
+  // Check if there is not a current TX/RX job running
+  if (LMIC.opmode & OP_TXRXPEND)
+  {
 //         Serial.println(F("OP_TXRXPEND, not sending"));
-     } else {
-         // Prepare upstream data transmission at the next possible time.
-         uint8_t dataLength = 8;
-         uint8_t data[dataLength];
+  } else
+  {
+    // Prepare upstream data transmission at the next possible time.
+    uint8_t dataLength = 8;
+    uint8_t data[dataLength];
 
-         int32_t vcc = IntRef.readVref();
+    // read vcc and add to bytebuffer
+    int32_t vcc = IntRef.readVref();
+    data[0] = (vcc >> 8) & 0xff;
+    data[1] = (vcc & 0xff);
 
-         data[0] = (vcc >> 8) & 0xff;
-         data[1] = (vcc & 0xff);
+    // reading data from BME sensor
+    bme.readSensor();
+    float tempFloat = bme.getTemperature_C();
+    float humFloat = bme.getHumidity_RH();
+    float pressFloat = bme.getPressure_Pa();
 
+    // from float to uint16_t
+    uint16_t tempInt = 100 * tempFloat;
+    uint16_t humInt = 100 * humFloat;
+    // pressure is already given in 100 x mBar = hPa
+    uint16_t pressInt = pressFloat/10;
 
+    // move BME data into bytebuffer
+    data[2] = (tempInt >> 8) & 0xff;
+    data[3] = tempInt & 0xff;
 
-         // reading data from BME sensor
-         bme.readSensor();
+    data[4] = (humInt >> 8) & 0xff;
+    data[5] = humInt & 0xff;
 
-         float tempFloat = bme.getTemperature_C();
-         float humFloat = bme.getHumidity_RH();
-         float pressFloat = bme.getPressure_Pa();
+    data[6] = (pressInt >> 8) & 0xff;
+    data[7] = pressInt & 0xff;
 
-         // from float to uint16_t
-         uint16_t tempInt = 100 * tempFloat;
-         uint16_t humInt = 100 * humFloat;
-         // pressure is already given in 100 x mBar = hPa
-         uint16_t pressInt = pressFloat/10;
-
-         // move into bytebuffer
-         data[2] = (tempInt >> 8) & 0xff;
-         data[3] = tempInt & 0xff;
-
-         data[4] = (humInt >> 8) & 0xff;
-         data[5] = humInt & 0xff;
-
-         data[6] = (pressInt >> 8) & 0xff;
-         data[7] = pressInt & 0xff;
-
-         bme.setForcedMode();
-
-         bme.goToSleep();
-
-         LMIC_setTxData2(1, data, sizeof(data), 0);
+    // set forced mode to be shure it will use minimal power and send it to sleep
+    bme.setForcedMode();
+    bme.goToSleep();
+    // set data in queu
+    LMIC_setTxData2(1, data, sizeof(data), 0);
   //       Serial.println(F("Packet queued"));
-     }
-     // Next TX is scheduled after TX_COMPLETE event.
- }
+  }
+}
 
- void setup() {
+void setup()
+{
   //   Serial.begin(9600);
-
-     delay(5000);
+  // delay at startup for debugging reasons
+  delay(5000);
   //   Serial.println(F("Starting"));
+  // LMIC init
+  os_init();
+  // Reset the MAC state. Session and pending data transfers will be discarded.
+  LMIC_reset();
+  // to incrise the size of the RX window.
+  LMIC_setClockError(MAX_CLOCK_ERROR * 10 / 100);
 
-     #ifdef VCC_ENABLE
-     // For Pinoccio Scout boards
-     pinMode(VCC_ENABLE, OUTPUT);
-     digitalWrite(VCC_ENABLE, HIGH);
-     delay(1000);
-     #endif
+  // begin communication with BME280 and set to default sampling, iirc, and standby settings
+  if (bme.begin() < 0)
+  {
+    //   Serial.println("Error communicating with BME280 sensor, please check wiring");
+    while(1){}
+  }
+  // Configure low power at startup
+  LowPower.begin();
 
-     // LMIC init
-     os_init();
-     // Reset the MAC state. Session and pending data transfers will be discarded.
-     LMIC_reset();
+  // Start job (sending automatically starts OTAA too)
+  do_send(&sendjob);
+}
 
-     // to incrise the size of the RX window.
-     LMIC_setClockError(MAX_CLOCK_ERROR * 10 / 100);
+void loop()
+{
+  // run the os_loop to check if a job is available
+  os_runloop_once();
+}
 
+/* MiniPill LoRa v1.1 mapping - LoRa module RFM95W and BME280 sensor
+  PA1  //            NSS           - BME280
+  PA4  // SPI1_NSS   NSS  - RFM95W
+  PA5  // SPI1_SCK   SCK  - RFM95W - BME280
+  PA6  // SPI1_MISO  MISO - RFM95W - BME280
+  PA7  // SPI1_MOSI  MOSI - RFM95W - BME280
 
-     // begin communication with BME280 and set to default sampling, iirc, and standby settings
-     if (bme.begin() < 0) {
-    //   Serial.println("Error communicating with BME280 sensor, check wiring and SPI");
-       while(1){}
-     }
+  PA10 // USART1_RX  DIO0 - RFM95W
+  PB4  //            DIO1 - RFM95W
+  PB5  //            DIO2 - RFM95W
 
-     // Configure low power
-     LowPower.begin();
+  PA9  // USART1_TX  RST  - RFM95W
 
-     // Start job (sending automatically starts OTAA too)
-     do_send(&sendjob);
- }
-
- void loop()
- {
-    // check for sleeping
-    //Serial.print("loop ");
-    //Serial.println(i);
-    //i++;
-    os_runloop_once();
- }
+  VCC - 3V3
+  GND - GND
+*/
