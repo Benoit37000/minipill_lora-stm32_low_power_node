@@ -16,6 +16,10 @@
 
   @version 2020-07-12
   Added LMIC_setClockError due to inaccurate timing on LMIC
+
+  @version 2020-10-08
+  Added code so you can use ABP instead of OTAA. Please enable DISABLE_JOIN
+  in the config.h in the lmic library and change ABP config in secconfig.h
 */
 
 #include <lmic.h>
@@ -37,9 +41,19 @@ BME280 bme(SPI,PA1);
 
 // include security credentials OTAA, check secconfig_example.h for more information
 #include "secconfig.h"
+
+#ifdef DISABLE_JOIN
+// These callbacks are only used in over-the-air activation, so they are
+// left empty here. We cannot leave them out completely otherwise the linker will complain.
+// DISABLE_JOIN is set in config.h for using ABP
+void os_getArtEui (u1_t* buf) { }
+void os_getDevEui (u1_t* buf) { }
+void os_getDevKey (u1_t* buf) { }
+#else
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 8);}
 void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 8);}
 void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 16);}
+#endif
 
 static osjob_t sendjob;
 
@@ -187,7 +201,7 @@ void do_send(osjob_t* j)
     // set forced mode to be shure it will use minimal power and send it to sleep
     bme.setForcedMode();
     bme.goToSleep();
-    // set data in queu
+    // set data in queue
     LMIC_setTxData2(1, data, sizeof(data), 0);
   //       Serial.println(F("Packet queued"));
   }
@@ -205,6 +219,23 @@ void setup()
   LMIC_reset();
   // to incrise the size of the RX window.
   LMIC_setClockError(MAX_CLOCK_ERROR * 10 / 100);
+
+  // Set static session parameters when using ABP.
+  // Instead of dynamically establishing a session
+  // by joining the network, precomputed session parameters are be provided.
+  #ifdef DISABLE_JOIN
+  uint8_t appskey[sizeof(APPSKEY)];
+  uint8_t nwkskey[sizeof(NWKSKEY)];
+  memcpy_P(appskey, APPSKEY, sizeof(APPSKEY));
+  memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
+  LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
+  // These settings are needed for correct communication. By removing them you
+  // get empty downlink messages
+  // TTN uses SF9 for its RX2 window.
+  LMIC.dn2Dr = DR_SF9;
+  // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
+  LMIC_setDrTxpow(DR_SF7,14);
+  #endif
 
   // begin communication with BME280 and set to default sampling, iirc, and standby settings
   if (bme.begin() < 0)

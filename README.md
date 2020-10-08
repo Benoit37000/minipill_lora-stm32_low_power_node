@@ -1,7 +1,11 @@
-# MiniPill LoRa version 1.1
+# MiniPill LoRa Hardware version 1.1 and 1.2
 
 Please look at https://www.iot-lab.org/blog/370/ for general information on this
 project. In this this file I will share some software specific information.
+
+
+## Update 2020-10-08
+Added code so you can also use ABP as activation mechanisme. Please look in the source code for instructions.
 
 ## PlatformIO
 Remember that this code is used in combination with the PlatformIO toolset.

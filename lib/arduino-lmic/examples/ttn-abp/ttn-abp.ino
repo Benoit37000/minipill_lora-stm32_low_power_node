@@ -208,8 +208,6 @@ void setup() {
     LMIC_selectSubBand(1);
     #endif
 
-    // Disable link check validation
-    LMIC_setLinkCheckMode(0);
 
     // TTN uses SF9 for its RX2 window.
     LMIC.dn2Dr = DR_SF9;
