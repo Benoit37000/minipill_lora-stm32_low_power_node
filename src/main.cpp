@@ -231,6 +231,8 @@ void setup()
   LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
   // These settings are needed for correct communication. By removing them you
   // get empty downlink messages
+  // Disable ADR
+  LMIC_setAdrMode(0);
   // TTN uses SF9 for its RX2 window.
   LMIC.dn2Dr = DR_SF9;
   // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
