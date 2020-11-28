@@ -258,7 +258,7 @@ void loop()
   os_runloop_once();
 }
 
-/* MiniPill LoRa v1.1 mapping - LoRa module RFM95W and BME280 sensor
+/* MiniPill LoRa v1.x mapping - LoRa module RFM95W and BME280 sensor
   PA1  //            NSS           - BME280
   PA4  // SPI1_NSS   NSS  - RFM95W
   PA5  // SPI1_SCK   SCK  - RFM95W - BME280

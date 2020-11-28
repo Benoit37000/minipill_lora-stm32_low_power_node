@@ -7,7 +7,7 @@ project. In this this file I will share some software specific information.
 All hardware versions 1.x are supported by this software
 
 ## Update 2020-10-08
-Added code so you can also use ABP as activation mechanisme. Please look in the source code for instructions.
+Added code so you can also use ABP as activation mechanisme. Please look in the source code for detailed instructions. In general: in config.h of lmic the DISABLE_JOIN is defined.
 
 ## PlatformIO
 Remember that this code is used in combination with the PlatformIO toolset.
